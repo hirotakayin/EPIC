@@ -1,0 +1,3 @@
+# EPIC's exploration box for excavation_long: pit x [0, 14], y [5, 35], z [-10, 0] plus the wall faces, as for excavation1
+box_0/down: [-0.2, 4.8, -10.2]
+box_0/up: [14.2, 35.2, -0.1]

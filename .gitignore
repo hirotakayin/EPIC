@@ -1,0 +1,10 @@
+# catkin tools build tree and editor files
+.catkin_tools/
+build/
+devel/
+logs/
+.vscode/
+# EPIC's demo maps (README: download from the authors' Google Drive); cave and garage exceed GitHub's 100 MB limit
+src/MARSIM/map_generator/resource/cave.pcd
+src/MARSIM/map_generator/resource/garage.pcd
+src/MARSIM/map_generator/resource/factory.pcd

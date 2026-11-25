@@ -259,6 +259,11 @@ void FastExplorationFSM::updateTopoAndGlobalPath() {
   planner_manager_->topo_graph_->updateHistoricalOdoms();
 
   if (planner_manager_->topo_graph_->odom_node_->neighbors_.empty()) {
+    // not started yet: whoever is flying the drone to the trigger point is not EPIC's to correct
+    if (state_ == WAIT_TRIGGER) {
+      global_path_update_timer_.start();
+      return;
+    }
     double time;
     if (planner_manager_->local_data_.traj_id_ > 1) {
       bool safe = planner_manager_->checkTrajCollision(time);

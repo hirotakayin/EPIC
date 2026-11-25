@@ -1,0 +1,61 @@
+<launch>
+  <!-- EPIC in an excavation pit, flying the CERLAB presets' mission: same start, entry waypoints, speed, yaw rate and logs.
+       Needs both workspaces: source ~/EPIC/devel/setup.bash; source ~/catkin_ws/devel/setup.bash -extend -->
+  <!-- map: excavation1, excavation_long or excavation_slab. Each needs map_generator/resource/<map>.pcd, made from its Gazebo
+       model with uav_simulator/scripts/sdf_to_pcd.py, and config/maps/<map>.yaml for EPIC's box -->
+  <arg name="map" default="excavation1" />
+  <arg name="init_x" default="$(eval {'excavation1': 6.0, 'excavation_long': 10.0, 'excavation_slab': 5.0}[arg('map')])" />
+  <arg name="config_file" default="excavation1_1ms.yaml" />
+  <arg name="preset" default="$(eval 'epic_1ms' if arg('map') == 'excavation1' else arg('map') + '_epic_1ms')" />
+  <arg name="gui" default="true" />
+  <arg name="run_save_dir" default="" />
+
+  <!-- MARSIM runs on the wall clock. A roscore left running after a Gazebo launch still says use_sim_time, which freezes every node here -->
+  <param name="/use_sim_time" value="false" />
+
+  <env name="ROSCONSOLE_CONFIG_FILE" value="$(find epic_planner)/config/rosconsole_quiet.config" />
+
+  <include file="$(find epic_planner)/launch/algorithm.xml">
+    <arg name="config_file" value="$(arg config_file)" />
+  </include>
+  <!-- traj_server's commands go through epic_mission, which owns the controller's command topic -->
+  <node pkg="plan_manage" name="traj_server" type="traj_server" output="screen">
+    <remap from="/position_cmd" to="/epic_mission/traj_cmd" />
+  </node>
+  <rosparam file="$(find epic_planner)/config/maps/$(arg map).yaml" ns="/exploration_node"/>
+  <include file="$(find epic_planner)/launch/simulation_pit_1ms.launch">
+    <arg name="map" value="$(arg map)" />
+    <arg name="init_x" value="$(arg init_x)" />
+  </include>
+
+  <!-- same mission and scoring settings as the CERLAB presets -->
+  <rosparam file="$(find autonomous_flight)/cfg/dynamic_exploration/flight_base.yaml" ns="autonomous_flight"/>
+  <rosparam file="$(find autonomous_flight)/cfg/dynamic_exploration/maps/$(arg map).yaml"/>
+  <param name="autonomous_flight/preset" value="$(arg preset)"/>
+  <param if="$(eval arg('run_save_dir') != '')" name="autonomous_flight/run_save_dir" value="$(arg run_save_dir)"/>
+  <arg name="world_sdf" default="$(eval find('uav_simulator') + '/models/' + arg('map') + '/' + ('env_one.sdf' if arg('map') == 'excavation1' else arg('map') + '.sdf'))"/>
+  <param name="autonomous_flight/world_sdf" textfile="$(arg world_sdf)"/>
+  <node pkg="epic_planner" type="epic_mission.py" name="epic_mission" output="screen">
+    <rosparam param="home" subst_value="true">[$(arg init_x), 2.0, 0.2]</rosparam>
+  </node>
+
+  <!-- the CERLAB map on EPIC's lidar and odometry, so coverage is computed as in the other presets -->
+  <rosparam file="$(find autonomous_flight)/cfg/dynamic_exploration/mapping_param.yaml" ns="/occupancy_map"/>
+  <param name="/occupancy_map/point_cloud_topic" value="/epic_monitor/cloud_lidar"/>
+  <param name="/occupancy_map/odom_topic" value="/quad_0/lidar_slam/odom"/>
+  <rosparam file="$(find autonomous_flight)/cfg/dynamic_exploration/maps/$(arg map)_mapping.yaml" ns="/occupancy_map"/>
+  <node pkg="autonomous_flight" type="epic_monitor_node" name="epic_monitor_node" output="screen"/>
+
+  <!-- what the dashboard reads -->
+  <param name="/DEP/lidar_fov_up" value="52.0"/>
+  <param name="/DEP/lidar_fov_down" value="-7.0"/>
+  <param name="/DEP/lidar_pitch" value="23.5"/>
+  <param name="/dynamic_map/raycast_max_length" value="20.0"/>
+  <node pkg="topic_tools" type="relay" name="voxel_map_relay" args="/occupancy_map/voxel_map /dynamic_map/voxel_map"/>
+  <group if="$(arg gui)">
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch"/>
+    <node pkg="autonomous_flight" type="system_monitor.py" name="system_monitor"/>
+    <node pkg="autonomous_flight" type="recording_fixer.py" name="recording_fixer"/>
+    <node pkg="autonomous_flight" type="open_mission_gui.sh" name="open_mission_gui"/>
+  </group>
+</launch>

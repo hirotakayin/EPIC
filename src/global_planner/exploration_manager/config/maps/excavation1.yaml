@@ -1,0 +1,5 @@
+# EPIC's exploration box for excavation1: the pit interior plus the wall faces (x 0/12, y 5/29). EPIC builds frontiers from
+# surface points inside this box, so it must contain the walls; viewpoints keep 0.9 m from obstacles, so they stay in the pit.
+# The top stops short of the ground at z 0
+box_0/down: [-0.2, 4.8, -16.2]
+box_0/up: [12.2, 29.2, -0.1]

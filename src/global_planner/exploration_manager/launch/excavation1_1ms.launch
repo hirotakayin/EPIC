@@ -1,0 +1,8 @@
+<launch>
+  <!-- kept for old commands: the same as pit_1ms.launch map:=excavation1 -->
+  <arg name="gui" default="true" />
+  <include file="$(find epic_planner)/launch/pit_1ms.launch">
+    <arg name="map" value="excavation1" />
+    <arg name="gui" value="$(arg gui)" />
+  </include>
+</launch>
